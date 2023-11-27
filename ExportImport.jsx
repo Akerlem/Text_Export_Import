@@ -38,7 +38,7 @@ function myScript(thisObj) {
     var project = app.project;
 
     if (project) {
-      var exportFile = File.saveDialog("Save CSV File", "Tab-separated Values:*.tsv");
+      var exportFile = File.saveDialog("Save TSV File", "Tab-separated Values:*.tsv");
 
       if (!exportFile) {
         alert("Export canceled by the user.");
@@ -59,7 +59,7 @@ function myScript(thisObj) {
               if (typeof textContent === "string") {
                 textContent = textContent.replace(/\r?\n/g, "\\n");
                 // Use tabs as delimiters
-                exportFile.writeln(compositionName + "\t" + layerName + "\t" + textContent);
+                exportFile.writeln(compositionName + "\t" + layerName + '\t"' + textContent + '"');
               } else {
                 // Use tabs as delimiters
                 exportFile.writeln(compositionName + "\t" + layerName + "\t");
@@ -95,17 +95,17 @@ function myScript(thisObj) {
 
   function importText() {
     var comp = app.project.activeItem;
-
+  
     if (comp && comp instanceof CompItem) {
       var importFile = File.openDialog("Import TSV File", "Tab-separated Values:*.tsv");
-
+  
       if (!importFile) {
         alert("Import canceled by the user.");
       } else {
         importFile.open("r");
-
+  
         importFile.readln(); // Skip the header line
-
+  
         while (!importFile.eof) {
           var line = importFile.readln();
           if (line !== "") {
@@ -113,16 +113,20 @@ function myScript(thisObj) {
             var data = line.split("\t");
             var layerName = data[1];
             var newText = data[2];
-
+  
             var textLayer = comp.layer(layerName);
-
+  
             if (textLayer instanceof TextLayer) {
               newText = newText.replace(/\\n/g, "\r\n");
+  
+              // Remove quotes from the imported text
+              newText = newText.replace(/^"(.*)"$/, "$1");
+  
               textLayer.text.sourceText.setValue(newText);
             }
           }
         }
-
+  
         importFile.close();
         alert("Text replacement complete!\nFile imported from: " + importFile.fsName);
       }
@@ -130,6 +134,7 @@ function myScript(thisObj) {
       alert("Open a composition to run this import script.");
     }
   }
+  
 
   var myScriptPal = myScript_buildUI(thisObj);
   if (myScriptPal != null && myScriptPal instanceof Window) {
