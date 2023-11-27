@@ -1,10 +1,11 @@
-function myScript(thisObj){
-  function myScript_buildUI(thisObj){
-    var myPanel = (thisObj instanceof Panel) ? thisObj: new Window("palette", "ExportImport", undefined, {resizable: true, closeButton:false});
+function myScript(thisObj) {
+  function myScript_buildUI(thisObj) {
+    var myPanel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "ExportImport", undefined, {resizable: true, closeButton: false});
 
     var res = "group{orientation:'column',\
           groupOne: Group{orientation:'row',\
           exportButton: Button{text:'Export Text'},\
+          exportOptions: Checkbox{text:'Whole Project', value:true},\
         },\
         groupTwo: Group{orientation:'row',\
         importButton: Button {text:'Import Text'},\
@@ -17,15 +18,15 @@ function myScript(thisObj){
     myPanel.grp = myPanel.add(res);
 
     // Default / Functionality
-    myPanel.grp.groupOne.exportButton.onClick = function(){
-      exportText();
+    myPanel.grp.groupOne.exportButton.onClick = function () {
+      exportText(myPanel.grp.groupOne.exportOptions.value);
     };
 
-    myPanel.grp.groupTwo.importButton.onClick = function(){
+    myPanel.grp.groupTwo.importButton.onClick = function () {
       importText();
     };
 
-    myPanel.grp.groupThree.closeButton.onClick = function(){
+    myPanel.grp.groupThree.closeButton.onClick = function () {
       myPanel.close();
     };
 
@@ -33,7 +34,7 @@ function myScript(thisObj){
     return myPanel;
   }
 
-  function exportText() {
+  function exportText(exportWholeProject) {
     var project = app.project;
 
     if (project) {
@@ -55,23 +56,29 @@ function myScript(thisObj){
               var textContent = layer.text.sourceText.value.text;
 
               if (typeof textContent === "string") {
-                // Replace line breaks with a placeholder
                 textContent = textContent.replace(/\r?\n/g, "\\n");
-
                 exportFile.writeln(compositionName + "," + layerName + ',"' + textContent + '"');
               } else {
                 exportFile.writeln(compositionName + "," + layerName + ",");
               }
-            } else if (layer instanceof AVLayer && layer.source instanceof CompItem) {
+            } else if (exportWholeProject && layer instanceof AVLayer && layer.source instanceof CompItem) {
               collectTextFromCompositions(layer.source);
             }
           }
         }
 
-        for (var i = 1; i <= project.rootFolder.items.length; i++) {
-          var item = project.rootFolder.items[i];
-          if (item instanceof CompItem) {
-            collectTextFromCompositions(item);
+        if (exportWholeProject) {
+          for (var i = 1; i <= project.rootFolder.items.length; i++) {
+            var item = project.rootFolder.items[i];
+            if (item instanceof CompItem) {
+              collectTextFromCompositions(item);
+            }
+          }
+        } else {
+          // Export from the active composition only
+          var activeComp = app.project.activeItem;
+          if (activeComp instanceof CompItem) {
+            collectTextFromCompositions(activeComp);
           }
         }
 
@@ -106,7 +113,6 @@ function myScript(thisObj){
             var textLayer = comp.layer(layerName);
 
             if (textLayer instanceof TextLayer) {
-              // Replace the placeholder with line breaks
               newText = newText.replace(/\\n/g, "\r\n");
               textLayer.text.sourceText.setValue(newText);
             }
