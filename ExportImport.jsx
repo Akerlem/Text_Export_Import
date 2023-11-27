@@ -5,7 +5,7 @@ function myScript(thisObj) {
     var res = "group{orientation:'column',\
           groupOne: Group{orientation:'row',\
           exportButton: Button{text:'Export Text'},\
-          exportOptions: Checkbox{text:'Whole Project', value:true},\
+          exportOptions: Checkbox{text:'Current Composition Only', value:true},\
         },\
         groupTwo: Group{orientation:'row',\
         importButton: Button {text:'Import Text'},\
@@ -19,7 +19,7 @@ function myScript(thisObj) {
 
     // Default / Functionality
     myPanel.grp.groupOne.exportButton.onClick = function () {
-      exportText(myPanel.grp.groupOne.exportOptions.value);
+      exportText(!myPanel.grp.groupOne.exportOptions.value); // Invert the checkbox value
     };
 
     myPanel.grp.groupTwo.importButton.onClick = function () {
@@ -38,14 +38,15 @@ function myScript(thisObj) {
     var project = app.project;
 
     if (project) {
-      var exportFile = File.saveDialog("Save CSV File", "Comma-separated Values:*.csv");
+      var exportFile = File.saveDialog("Save CSV File", "Tab-separated Values:*.tsv");
 
       if (!exportFile) {
         alert("Export canceled by the user.");
       } else {
         exportFile.open("w");
 
-        exportFile.writeln("Composition,Layer Name,Text");
+        // Use tabs as delimiters
+        exportFile.writeln("Composition\tLayer Name\tText");
 
         function collectTextFromCompositions(comp) {
           for (var i = 1; i <= comp.layers.length; i++) {
@@ -57,9 +58,11 @@ function myScript(thisObj) {
 
               if (typeof textContent === "string") {
                 textContent = textContent.replace(/\r?\n/g, "\\n");
-                exportFile.writeln(compositionName + "," + layerName + ',"' + textContent + '"');
+                // Use tabs as delimiters
+                exportFile.writeln(compositionName + "\t" + layerName + "\t" + textContent);
               } else {
-                exportFile.writeln(compositionName + "," + layerName + ",");
+                // Use tabs as delimiters
+                exportFile.writeln(compositionName + "\t" + layerName + "\t");
               }
             } else if (exportWholeProject && layer instanceof AVLayer && layer.source instanceof CompItem) {
               collectTextFromCompositions(layer.source);
@@ -83,7 +86,7 @@ function myScript(thisObj) {
         }
 
         exportFile.close();
-        alert("CSV export complete!\nFile saved to: " + exportFile.fsName);
+        alert("TSV export complete!\nFile saved to: " + exportFile.fsName);
       }
     } else {
       alert("Open a project to run this export script.");
@@ -94,7 +97,7 @@ function myScript(thisObj) {
     var comp = app.project.activeItem;
 
     if (comp && comp instanceof CompItem) {
-      var importFile = File.openDialog("Import CSV File", "Comma-separated Values:*.csv");
+      var importFile = File.openDialog("Import TSV File", "Tab-separated Values:*.tsv");
 
       if (!importFile) {
         alert("Import canceled by the user.");
@@ -106,7 +109,8 @@ function myScript(thisObj) {
         while (!importFile.eof) {
           var line = importFile.readln();
           if (line !== "") {
-            var data = line.split(",");
+            // Use tabs as delimiters
+            var data = line.split("\t");
             var layerName = data[1];
             var newText = data[2];
 
