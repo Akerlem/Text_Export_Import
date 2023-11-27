@@ -1,12 +1,61 @@
-// After Effects Script with UI for Exporting and Importing Text
+// After Effects Script with Dockable UI for Exporting and Importing Text
 
+//////Dockable UI
+{
+  function myScript(thisObj){
+    function myScript_buildUI(thisObj){
+      var myPanel = (thisObj instanceof Panel) ? thisObj: new Window("palette", "ExportImport", undefined, {resizable: true, closeButton:false});
+  
+      var res = "group{orientation:'column',\
+            groupOne: Group{orientation:'row',\
+            exportButton: Button{text:'Export Text'},\
+          },\
+          groupTwo: Group{orientation:'row',\
+          importButton: Button {text:'Import Text'},\
+        },\
+          groupThree: Group{orientation:'row',\
+          closeButton: Button{text:'Close'},\
+        },\
+      }";
+  
+      myPanel.grp = myPanel.add(res);
+  
+      // Default / Functionality
+      myPanel.grp.groupOne.exportButton.onClick = function(){
+        exportText();
+      };
+
+      myPanel.grp.groupTwo.importButton.onClick = function(){
+        importText();
+      };
+
+      myPanel.grp.groupThree.closeButton.onClick = function(){
+        myPanel.close();
+      };
+  
+      myPanel.layout.layout(true);
+      return myPanel;
+    }
+  
+    var myScriptPal = myScript_buildUI(thisObj);
+    if(myScriptPal != null && myScriptPal instanceof Window){
+      myScriptPal.center();
+      myScriptPal.show();
+    }
+  }
+  
+  myScript(this);
+  
+}
+
+//////
 // Function to export text to CSV
 function exportText() {
-  // Get the active composition
-  var comp = app.project.activeItem;
+  // Get the active project
+  var project = app.project;
 
-  // Check if a composition is open
-  if (comp && comp instanceof CompItem) {
+  // Check if a project is open
+  if (project) {
     // Prompt the user to choose a location to save the CSV data
     var exportFile = File.saveDialog("Save CSV File", "Comma-separated Values:*.csv");
 
@@ -17,28 +66,37 @@ function exportText() {
       exportFile.open("w");
 
       // Write CSV header
-      exportFile.writeln("Layer Name,Text");
+      exportFile.writeln("Composition,Layer Name,Text");
 
-      // Loop through all layers in the composition
-      for (var i = 1; i <= comp.numLayers; i++) {
-        var layer = comp.layer(i);
+      // Loop through all compositions in the project
+      for (var i = 1; i <= project.rootFolder.items.length; i++) {
+        var item = project.rootFolder.items[i];
 
-        // Check if the layer is a text layer
-        if (layer instanceof TextLayer) {
-          // Get the layer name and text content
-          var layerName = layer.name;
-          var textContent = layer.text.sourceText.value.text; // Fix here
+        // Check if the item is a composition
+        if (item instanceof CompItem) {
+          // Loop through all layers in the composition
+          for (var j = 1; j <= item.numLayers; j++) {
+            var layer = item.layer(j);
 
-          // Check if textContent is a string
-          if (typeof textContent === "string") {
-            // Replace commas with a different character to avoid CSV conflicts
-            textContent = textContent.replace(/,/g, ";");
+            // Check if the layer is a text layer
+            if (layer instanceof TextLayer) {
+              // Get the composition name, layer name, and text content
+              var compositionName = item.name;
+              var layerName = layer.name;
+              var textContent = layer.text.sourceText.value.text;
 
-            // Write layer data to the CSV file without quotes around text
-            exportFile.writeln(layerName + "," + textContent);
-          } else {
-            // If textContent is not a string, write an empty value to the CSV file
-            exportFile.writeln(layerName + ",");
+              // Check if textContent is a string
+              if (typeof textContent === "string") {
+                // Replace commas with a different character to avoid CSV conflicts
+                textContent = textContent.replace(/,/g, ";");
+
+                // Write layer data to the CSV file without quotes around text
+                exportFile.writeln(compositionName + "," + layerName + "," + textContent);
+              } else {
+                // If textContent is not a string, write an empty value to the CSV file
+                exportFile.writeln(compositionName + "," + layerName + ",");
+              }
+            }
           }
         }
       }
@@ -48,7 +106,7 @@ function exportText() {
       alert("CSV export complete!\nFile saved to: " + exportFile.fsName);
     }
   } else {
-    alert("Open a composition to run this export script.");
+    alert("Open a project to run this export script.");
   }
 }
 
@@ -76,8 +134,8 @@ function importText() {
         var line = importFile.readln();
         if (line !== "") {
           var data = line.split(",");
-          var layerName = data[0];
-          var newText = data[1];
+          var layerName = data[1];
+          var newText = data[2];
 
           // Find the text layer by name
           var textLayer = comp.layer(layerName);
@@ -99,15 +157,28 @@ function importText() {
   }
 }
 
-// Create UI
-var scriptUI = new Window("palette", "Text Export/Import", undefined);
-scriptUI.orientation = "column";
-scriptUI.alignChildren = ["center","top"];
+/*
+// Function to create dockable panel
+function createDockablePanel() {
+  var scriptPanel = new Window("palette", "Text Export/Import");
 
-var exportButton = scriptUI.add("button", undefined, "Export Text");
-exportButton.onClick = exportText;
+  scriptPanel.orientation = "column";
+  scriptPanel.alignChildren = ["center", "top"];
 
-var importButton = scriptUI.add("button", undefined, "Import Text");
-importButton.onClick = importText;
+  var exportButton = scriptPanel.add("button", undefined, "Export Text");
+  exportButton.onClick = exportText;
 
-scriptUI.show();
+  var importButton = scriptPanel.add("button", undefined, "Import Text");
+  importButton.onClick = importText;
+
+  return scriptPanel;
+}
+
+// Try to create and show the dockable panel
+try {
+  var dockablePanel = createDockablePanel();
+  dockablePanel.show();
+} catch (e) {
+  alert("Error creating the dockable panel: " + e.toString());
+}
+*/
